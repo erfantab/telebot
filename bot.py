@@ -1,61 +1,70 @@
-
 import telebot
+from telebot import types
+from flask import Flask, request
 
-TOKEN = "8147418547:AAEw9kZRAzpWEdbbwRSAphTvyCGH132gAOg"
-bot = telebot.TeleBot(TOKEN)
+app = Flask(__name__)
 
-# لیست آی‌دی عددی ادمین‌ها
-ADMIN_IDS = [2011180432, 6908531944]
+# توکن ربات
+API_TOKEN = '8147418547:AAEw9kZRAzpWEdbbwRSAphTvyCGH132gAOg'
+bot = telebot.TeleBot(API_TOKEN)
 
-# یوزرنیم کانال برای بررسی عضویت
-CHANNEL_USERNAME = '@bahanet1'
+# آدرس وب‌هوک (URL) رندر شما
+WEBHOOK_URL = 'https://telebot-1-u1n4.onrender.com/'  # تغییر به آدرس رندر شما
 
-# چک می‌کنه کاربر عضو کانال هست یا نه
-def is_user_member(user_id):
-    try:
-        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
-        return member.status in ['member', 'creator', 'administrator']
-    except:
-        return False
+# تابع ارسال پیام خوشامدگویی
+def send_welcome_message(chat_id):
+    # ارسال پیام خوشامدگویی
+    bot.send_message(chat_id, 
+                     "قراره تو عکس بفرستی، ما ذوق کنیم، بقیه رأی بدن، و یه نفر قهرمان شه! حالا نوبت توئه 🎯👑")
+    
+    # ایجاد دکمه‌های جوین
+    markup = types.InlineKeyboardMarkup()
+    button = types.InlineKeyboardButton("جوین شو", url="https://t.me/bahanet1")  # لینک کانال شما
+    markup.add(button)
+    
+    # ارسال دکمه جوین پس از پیام خوشامدگویی
+    bot.send_message(chat_id, 
+                     "برای شروع، لطفاً به کانال ما بپیوندید.",
+                     reply_markup=markup)  # دکمه در پایین پیام
 
-# پیام /start با چک کردن عضویت
+# هنگامی که کاربر استارت می‌کنه
 @bot.message_handler(commands=['start'])
-def start(message):
-    if not is_user_member(message.from_user.id):
-        bot.send_message(message.chat.id, f"برای استفاده از ربات، اول باید عضو کانال {CHANNEL_USERNAME} بشی 🌟")
-        return
-    bot.send_message(message.chat.id, "قراره تو عکس بفرستی، ما ذوق کنیم، بقیه رأی بدن، و یه نفر قهرمان شه! حالا نوبت توئه 🎯👑")
+def handle_start(message):
+    chat_id = message.chat.id
+    send_welcome_message(chat_id)
 
-# دریافت و فوروارد عکس‌ها به ادمین‌ها
+# دریافت عکس از کاربر و ارسال به ادمین‌ها
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
-    for admin_id in ADMIN_IDS:
-        try:
-            bot.forward_message(chat_id=admin_id, from_chat_id=message.chat.id, message_id=message.message_id)
-        except Exception as e:
-            print(f"Error sending to admin {admin_id}: {e}")
-    bot.reply_to(message, "عکست دریافت شد! منتظر رأی‌ها باش! 🔥📸")
+    chat_id = message.chat.id
+    file_id = message.photo[-1].file_id
+    file_info = bot.get_file(file_id)
+    file_path = file_info.file_path
 
-# اجرای ربات با webhook
-import flask
-from flask import request
+    # ارسال عکس به ادمین‌ها
+    admin_ids = [2011180432, 6908531944]  # آی‌دی ادمین‌ها
+    for admin_id in admin_ids:
+        bot.send_photo(admin_id, file_path)
 
-WEBHOOK_URL = 'https://telebot-1-u1n4.onrender.com/'  # آدرس دامنه رندر
-WEBHOOK_PATH = f"/{TOKEN}/"
-WEBHOOK_LISTEN = "0.0.0.0"
-WEBHOOK_PORT = 10000
+    # تایید دریافت عکس به کاربر
+    bot.send_message(chat_id, 
+                     "خیلی ممنونم بابت شرکت تو چالشمون! 😊 سلفی خوشگلت دریافت شد 📸 و بعد از بررسی تو چنل قرار می‌گیره. پس از رای‌گیری، یه هدیه خیلی کوچیک از طرف ما قراره بگیری 🎁✨\n\nمنتظر خبرای خوب باش! 🌟")
 
-app = flask.Flask(__name__)
-
-@app.route(WEBHOOK_PATH, methods=["POST"])
+# وب‌هوک رو تنظیم کن
+@app.route('/' + API_TOKEN, methods=['POST'])
 def webhook():
-    json_string = request.get_data().decode("utf-8")
-    update = telebot.types.Update.de_json(json_string)
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
     bot.process_new_updates([update])
-    return '', 200
+    return '!', 200
 
-import os
-if __name__ == "__main__":
+# تابع برای راه‌اندازی وب‌هوک
+def set_webhook():
     bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL + TOKEN + '/')
-    app.run(host=WEBHOOK_LISTEN, port=int(os.environ.get('PORT', WEBHOOK_PORT)))
+    bot.set_webhook(url=WEBHOOK_URL + API_TOKEN)
+
+# راه‌اندازی وب‌هوک در ابتدا
+set_webhook()
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=80)
