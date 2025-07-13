@@ -47,21 +47,27 @@ def handle_photo(message):
         bot.send_message(message.chat.id, "👈 لطفاً اول عضو کانال شو بعد عکس بفرست 🙏", reply_markup=markup)
         return
 
-    # ارسال عکس به ادمین‌ها + ارسال اطلاعات کامل کاربر
+    user = message.from_user
+    first_name = user.first_name or "ندارد"
+    last_name = user.last_name or "ندارد"
+    username = f"@{user.username}" if user.username else "ندارد"
+    user_id = user.id
+    language = user.language_code or "نامشخص"
+    profile_link = f"[لینک چت](tg://user?id={user_id})"
+
+    user_info = (
+        "📸 عکس جدید از کاربر\n\n"
+        f"👤 نام: {first_name} {last_name}\n"
+        f"🔗 یوزرنیم: {username}\n"
+        f"🆔 آی‌دی عددی: `{user_id}`\n"
+        f"🌐 زبان: {language}\n"
+        f"🔗 پروفایل: {profile_link}"
+    )
+
     for admin_id in ADMIN_IDS:
-        # فوروارد عکس
+        # فوروارد خود عکس
         bot.forward_message(admin_id, message.chat.id, message.message_id)
-
-        # اطلاعات کامل کاربر
-        user = message.from_user
-        user_info = f"""📸 عکس جدید دریافت شد
-
-👤 نام: {user.first_name or "-"} {user.last_name or ""}
-🔗 یوزرنیم: @{user.username if user.username else "ندارد"}
-🆔 آی‌دی عددی: `{user.id}`
-🌐 زبان: {user.language_code or "نامشخص"}
-🔗 لینک پروفایل: [کلیک برای چت](tg://user?id={user.id})
-"""
+        # ارسال اطلاعات کامل کاربر
         bot.send_message(admin_id, user_info, parse_mode="Markdown")
 
     # پیام تشکر به کاربر
